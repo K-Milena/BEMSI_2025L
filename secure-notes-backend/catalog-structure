@@ -1,0 +1,26 @@
+secure-notes-backend/
+│
+├── src/
+│   ├── index.ts          <- punkt wejścia
+│   ├── routes/
+│   │   └── notes.ts
+│   ├── controllers/
+│   │   └── notesController.ts
+│   ├── db/
+│   │   └── db.ts
+│   └── auth/
+│       ├── auth.ts
+│       └── jwt.ts
+│
+├── .env
+├── tsconfig.json
+└── package.json
+
+komendy:
+
+reset i uruchomienie serwera (powinno pokazać Server running on http://localhost:3000):
+npm run dev
+
+test:
+http://localhost:3000/api/health
+
