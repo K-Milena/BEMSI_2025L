@@ -51,7 +51,7 @@ curl -X POST http://localhost:3000/login \
 
 profile
 
-curl -H "Authorization: Bearer <TOKEN>" http://localhost:3000/profile
+curl -H "Authorization: Bearer $TOKEN" http://localhost:3000/profile
 
 ////////////////////////////////////////////////////////////////////////////////
 

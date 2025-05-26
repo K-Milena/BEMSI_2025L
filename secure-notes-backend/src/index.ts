@@ -3,16 +3,17 @@ import cors from 'cors';
 import * as dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { addUser, findUserByEmail } from './db/users';
 import { authenticateToken, AuthRequest } from './middleware/auth';
 import { PrismaClient } from '@prisma/client';
+import crypto from 'crypto';
 
 dotenv.config();
 
 const prisma = new PrismaClient();
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
+const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_string';
+
 
 app.use(cors());
 app.use(express.json());
@@ -28,13 +29,17 @@ app.post('/register', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  if (findUserByEmail(email)) {
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) {
     res.status(409).json({ error: 'User already exists' });
     return;
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const newUser = addUser(email, passwordHash);
+
+  const newUser = await prisma.user.create({
+    data: { email, password: passwordHash },  // <--- zapisz hash, nie plain
+  });
 
   res.status(201).json({ message: 'User created', userId: newUser.id });
 });
@@ -46,18 +51,18 @@ app.post('/login', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const user = findUserByEmail(email);
+  const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
     res.status(401).json({ error: 'Invalid credentials' });
     return;
   }
 
-  const isValid = await bcrypt.compare(password, user.passwordHash);
+  const isValid = await bcrypt.compare(password, user.password);
   if (!isValid) {
     res.status(401).json({ error: 'Invalid credentials' });
     return;
   }
- 
+
   const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
   res.json({ token });
 });
@@ -71,10 +76,7 @@ app.get('/profile', authenticateToken, (req: AuthRequest, res: Response): void =
   res.json({ userId: req.user.userId, email: req.user.email });
 });
 
-// Simple in-memory store for demo
-const notes: { id: string; userId: string; title: string; encryptedData: string; iv: string }[] = [];
-
-app.post('/notes', authenticateToken, (req: AuthRequest, res: Response): void => {
+app.post('/notes', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   const { title, encryptedData, iv } = req.body;
   if (!title || !encryptedData || !iv) {
     res.status(400).json({ error: 'Missing fields' });
@@ -85,35 +87,44 @@ app.post('/notes', authenticateToken, (req: AuthRequest, res: Response): void =>
     return;
   }
 
-  const newNote = {
-    id: crypto.randomUUID(),
-    userId: req.user.userId,
-    title,
-    encryptedData,
-    iv,
-  };
-  notes.push(newNote);
+  const newNote = await prisma.note.create({
+    data: {
+      userId: req.user.userId,
+      title,
+      encryptedData,
+      iv,
+    },
+  });
+
   res.status(201).json({ message: 'Note saved', noteId: newNote.id });
 });
 
-app.get('/notes', authenticateToken, (req: AuthRequest, res: Response): void => {
+app.get('/notes', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   if (!req.user) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
-  const userNotes = notes.filter(note => note.userId === req.user!.userId);
-  // Return only metadata, not encryptedData for listing
-  const metadata = userNotes.map(({ id, title, iv }) => ({ id, title, iv }));
-  res.json(metadata);
+
+  const userNotes = await prisma.note.findMany({
+    where: { userId: req.user.userId },
+    select: { id: true, title: true, iv: true }, // metadata only
+  });
+
+  res.json(userNotes);
 });
 
-app.get('/notes/:id', authenticateToken, (req: AuthRequest, res: Response): void => {
+app.get('/notes/:id', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   if (!req.user) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
 
-const note = notes.find(n => n.userId === req.user!.userId && n.id === req.params.id);
+  const note = await prisma.note.findFirst({
+    where: {
+      id: req.params.id,
+      userId: req.user.userId,
+    },
+  });
 
   if (!note) {
     res.status(404).json({ error: 'Note not found' });
@@ -122,9 +133,6 @@ const note = notes.find(n => n.userId === req.user!.userId && n.id === req.param
 
   res.json(note);
 });
-
-
-
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
