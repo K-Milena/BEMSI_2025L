@@ -40,7 +40,7 @@ graph TD
 ```
 ---
 
-## Instrukcje uruchomienia
+## Instrukcje uruchomienia na Linuxie (Debian, Ubuntu)
 
 ### Backend
 1. Sklonuj repozytorium:
@@ -53,18 +53,23 @@ graph TD
     npm install
     npm run dev
     ```
+    W razie niepowodzenia (błędów) użyj:
+   ```bash
+   rm -rf node_modules package-lock.json
+   npm install
+   ```
     
     ```bash
     sudo -u postgres psql -d secure_notes
     ```
     
-3. Przejdź do folderu frontendu (secure-notes-frontend) i uruchom aplikację:
+4. Przejdź do folderu frontendu (secure-notes-frontend) i uruchom aplikację:
     ```bash
     npm install
     npm start
     ```
 
-4. Aplikacja będzie teraz dostępna pod adresem 
+5. Aplikacja będzie teraz dostępna pod adresem:
     ```bash
     http://localhost:3001
     ```
