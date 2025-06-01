@@ -46,7 +46,6 @@ graph TD
 1. Sklonuj repozytorium:
    ```bash
    git clone https://github.com/K-Milena/BEMSI_2025L.git
-   cd BEMSI_2025L/backend
    ```
   
 2. Przejdź do folderu backendu (secure-notes-backend) i uruchom serwer wraz z bazą danych:
