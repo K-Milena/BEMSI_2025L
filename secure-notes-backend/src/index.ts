@@ -134,6 +134,42 @@ app.get('/notes/:id', authenticateToken, async (req: AuthRequest, res: Response)
   res.json(note);
 });
 
+// DELETE /notes/:id - delete a note by ID
+app.delete('/notes/:id', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  const noteId = req.params.id;
+
+  try {
+    // Sprawdź, czy notatka należy do użytkownika
+    const note = await prisma.note.findFirst({
+      where: {
+        id: noteId,
+        userId: req.user.userId,
+      },
+    });
+
+    if (!note) {
+      res.status(404).json({ error: 'Note not found or access denied' });
+      return;
+    }
+
+    // Usuń notatkę
+    await prisma.note.delete({
+      where: { id: noteId },
+    });
+
+    res.json({ message: 'Note deleted successfully' });
+  } catch (err) {
+    console.error('Delete note error:', err);
+    res.status(500).json({ error: 'Failed to delete note' });
+  }
+});
+
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
